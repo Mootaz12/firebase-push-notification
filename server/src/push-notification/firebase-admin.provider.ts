@@ -1,12 +1,11 @@
 import * as admin from 'firebase-admin';
 import { ConfigService } from '@nestjs/config';
 import { FirebaseConfigType } from 'src/config/firebase.config';
-const configService = new ConfigService();
-const firebaseConfig =
-  configService.getOrThrow<FirebaseConfigType>('firebaseConfig');
 export const firebaseAdminProvider = {
   provide: 'FIREBASE_ADMIN',
-  useFactory: () => {
+  useFactory: (configService: ConfigService) => {
+    const firebaseConfig =
+      configService.getOrThrow<FirebaseConfigType>('firebaseConfig');
     const defaultApp = admin.initializeApp({
       credential: admin.credential.cert({
         projectId: firebaseConfig.projectId,
@@ -16,4 +15,5 @@ export const firebaseAdminProvider = {
     });
     return { defaultApp };
   },
+  inject: [ConfigService],
 };
