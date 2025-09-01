@@ -1,8 +1,10 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { SendNotificationDTO } from './dto/send-notification.dto';
 import * as firebase from 'firebase-admin';
 @Injectable()
 export class PushNotificationService {
+  constructor() {}
+  private readonly logger = new Logger(PushNotificationService.name);
   async sendNotification(sendNotificationDTO: SendNotificationDTO) {
     try {
       await firebase
@@ -34,11 +36,10 @@ export class PushNotificationService {
           },
         })
         .catch((error: any) => {
-          console.error(error);
+          this.logger.error(error);
         });
     } catch (error) {
-      console.log(error);
-      return error;
+      this.logger.error(error);
     }
   }
 }
