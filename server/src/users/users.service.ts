@@ -1,9 +1,10 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { UserEntity } from './entity/user.entity';
-import { IsNull, Not, Repository } from 'typeorm';
+import { DataSource, IsNull, Not, Repository } from 'typeorm';
 import { UserDto } from './dto/user.dto';
 import * as bcrypt from 'bcrypt';
+import { ProfileEntity } from './entity/profile.entity';
 
 @Injectable()
 export class UsersService {
@@ -11,16 +12,31 @@ export class UsersService {
   constructor(
     @InjectRepository(UserEntity)
     private readonly usersRepository: Repository<UserEntity>,
+    private readonly dataSource: DataSource,
   ) {
     this.logger = new Logger(UsersService.name);
   }
 
   async findUsers() {
-    return await this.usersRepository.find();
+    try {
+      return await this.usersRepository.find({
+        relations: {
+          profile: true,
+        },
+      });
+    } catch (error) {
+      this.logger.error(error);
+      throw error;
+    }
   }
   async findUserById(id: string) {
     try {
-      const user = await this.usersRepository.findOneBy({ id });
+      const user = await this.usersRepository.findOne({
+        where: { id },
+        relations: {
+          profile: true,
+        },
+      });
       if (!user) {
         throw new NotFoundException('User not found');
       }
@@ -32,9 +48,22 @@ export class UsersService {
   }
   async createUser(userDto: UserDto) {
     try {
-      const user = this.usersRepository.create(userDto);
-      user.password = String(await bcrypt.hash(userDto.password, 10));
-      return await this.usersRepository.save(user);
+      const manager = this.dataSource.createEntityManager();
+      return await manager.transaction(async (transactionalEntityManager) => {
+        const user = transactionalEntityManager.create(UserEntity, {
+          name: userDto.name.trim(),
+          email: userDto.email.trim(),
+          password: String(await bcrypt.hash(userDto.password, 10)),
+        });
+        const profile = transactionalEntityManager.create(ProfileEntity, {
+          bio: `Hello I am ${userDto.name}`,
+        });
+        user.profile = profile;
+        user.password = String(await bcrypt.hash(userDto.password, 10));
+
+        await transactionalEntityManager.save(profile);
+        return await transactionalEntityManager.save(user);
+      });
     } catch (error) {
       this.logger.error(error);
       throw error;
@@ -42,14 +71,38 @@ export class UsersService {
   }
   async updateUser(id: string, userDto: UserDto) {
     try {
-      const user = await this.usersRepository.findOneBy({ id });
-      if (!user) {
-        throw new NotFoundException('User not found');
-      }
-      user.name = userDto.name;
-      user.email = userDto.email;
-      user.password = String(await bcrypt.hash(userDto.password, 10));
-      return await this.usersRepository.save(userDto);
+      const manager = this.dataSource.createEntityManager();
+      return await manager.transaction(async (transactionalEntityManager) => {
+        const user = await transactionalEntityManager.findOne(UserEntity, {
+          where: { id },
+        });
+        if (!user) {
+          throw new NotFoundException('User not found');
+        }
+        const trimmedName = userDto.name.trim();
+        const trimmedEmail = userDto.email.trim();
+        const profile = await transactionalEntityManager.findOne(
+          ProfileEntity,
+          {
+            where: { user: { id } },
+          },
+        );
+        if (trimmedName) {
+          user.name = trimmedName;
+        }
+        if (trimmedEmail) {
+          user.email = trimmedEmail;
+        }
+        if (userDto.password.trim()) {
+          user.password = String(await bcrypt.hash(userDto.password, 10));
+        }
+        await transactionalEntityManager.save(user);
+        if (profile) {
+          profile.bio = `Hello I am ${userDto.name.trim()}`;
+          await transactionalEntityManager.save(profile);
+        }
+        return user;
+      });
     } catch (error) {
       this.logger.error(error);
       throw error;
