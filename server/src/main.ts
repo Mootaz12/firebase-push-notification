@@ -31,7 +31,7 @@ async function bootstrap() {
     }),
   );
   await app.listen(httpConfig.port).then(() => {
-    logger.log(`Server is running on port: ${httpConfig.port}`);
+    logger.verbose(`Server is running on port: ${httpConfig.port}`);
   });
 }
 bootstrap();
