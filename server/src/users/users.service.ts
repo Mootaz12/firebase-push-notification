@@ -1,4 +1,9 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { UserEntity } from './entity/user.entity';
 import { DataSource, IsNull, Not, Repository } from 'typeorm';
@@ -48,22 +53,29 @@ export class UsersService {
   }
   async createUser(userDto: UserDto) {
     try {
-      const manager = this.dataSource.createEntityManager();
-      return await manager.transaction(async (transactionalEntityManager) => {
-        const user = transactionalEntityManager.create(UserEntity, {
-          name: userDto.name.trim(),
-          email: userDto.email.trim(),
-          password: String(await bcrypt.hash(userDto.password, 10)),
-        });
-        const profile = transactionalEntityManager.create(ProfileEntity, {
-          bio: `Hello I am ${userDto.name}`,
-        });
-        user.profile = profile;
-        user.password = String(await bcrypt.hash(userDto.password, 10));
+      return await this.dataSource.transaction(
+        async (transactionalEntityManager) => {
+          const trimmedName = userDto.name.trim();
+          const trimmedEmail = userDto.email.trim();
+          const trimmedPassword = userDto.password.trim();
+          if (!trimmedName || !trimmedEmail || !trimmedPassword) {
+            throw new BadRequestException('Invalid user data');
+          }
+          const user = transactionalEntityManager.create(UserEntity, {
+            name: trimmedName,
+            email: trimmedEmail,
+            password: String(await bcrypt.hash(userDto.password, 10)),
+          });
+          const profile = transactionalEntityManager.create(ProfileEntity, {
+            bio: `Hello I am ${trimmedName}`,
+          });
+          user.profile = profile;
+          user.password = String(await bcrypt.hash(userDto.password, 10));
 
-        await transactionalEntityManager.save(profile);
-        return await transactionalEntityManager.save(user);
-      });
+          await transactionalEntityManager.save(profile);
+          return await transactionalEntityManager.save(user);
+        },
+      );
     } catch (error) {
       this.logger.error(error);
       throw error;
@@ -71,38 +83,47 @@ export class UsersService {
   }
   async updateUser(id: string, userDto: UserDto) {
     try {
-      const manager = this.dataSource.createEntityManager();
-      return await manager.transaction(async (transactionalEntityManager) => {
-        const user = await transactionalEntityManager.findOne(UserEntity, {
-          where: { id },
-        });
-        if (!user) {
-          throw new NotFoundException('User not found');
-        }
-        const trimmedName = userDto.name.trim();
-        const trimmedEmail = userDto.email.trim();
-        const profile = await transactionalEntityManager.findOne(
-          ProfileEntity,
-          {
-            where: { user: { id } },
-          },
-        );
-        if (trimmedName) {
-          user.name = trimmedName;
-        }
-        if (trimmedEmail) {
-          user.email = trimmedEmail;
-        }
-        if (userDto.password.trim()) {
-          user.password = String(await bcrypt.hash(userDto.password, 10));
-        }
-        await transactionalEntityManager.save(user);
-        if (profile) {
-          profile.bio = `Hello I am ${userDto.name.trim()}`;
-          await transactionalEntityManager.save(profile);
-        }
-        return user;
-      });
+      return await this.dataSource.transaction(
+        async (transactionalEntityManager) => {
+          const user = await transactionalEntityManager.findOne(UserEntity, {
+            where: { id },
+          });
+          if (!user) {
+            throw new NotFoundException('User not found');
+          }
+          const trimmedName = userDto.name.trim();
+          const trimmedEmail = userDto.email.trim();
+          const trimmedPassword = userDto.password.trim();
+          const profile = await transactionalEntityManager.findOne(
+            ProfileEntity,
+            {
+              where: { user: { id } },
+            },
+          );
+          if (
+            (userDto.name && !trimmedName) ||
+            (userDto.email && !trimmedEmail) ||
+            (userDto.password && !trimmedPassword)
+          ) {
+            throw new BadRequestException('Invalid user data');
+          }
+          if (trimmedName && trimmedName !== user.name) {
+            user.name = trimmedName;
+          }
+          if (trimmedEmail && trimmedEmail !== user.email) {
+            user.email = trimmedEmail;
+          }
+          if (userDto.password.trim() && userDto.password !== user.password) {
+            user.password = String(await bcrypt.hash(userDto.password, 10));
+          }
+          await transactionalEntityManager.save(user);
+          if (profile) {
+            profile.bio = `Hello I am ${userDto.name.trim()}`;
+            await transactionalEntityManager.save(profile);
+          }
+          return user;
+        },
+      );
     } catch (error) {
       this.logger.error(error);
       throw error;
