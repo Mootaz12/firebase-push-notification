@@ -1,7 +1,7 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { UserEntity } from './entity/user.entity';
-import { Repository } from 'typeorm';
+import { IsNull, Not, Repository } from 'typeorm';
 import { UserDto } from './dto/user.dto';
 import * as bcrypt from 'bcrypt';
 
@@ -62,6 +62,27 @@ export class UsersService {
         throw new NotFoundException('User not found');
       }
       return await this.usersRepository.softRemove({ id });
+    } catch (error) {
+      this.logger.error(error);
+      throw error;
+    }
+  }
+  async getSoftDeletedUsers() {
+    try {
+      return await this.usersRepository.find({
+        withDeleted: true,
+        where: {
+          deletedAt: Not(IsNull()),
+        },
+      });
+    } catch (error) {
+      this.logger.error(error);
+      throw error;
+    }
+  }
+  async restoreUser(id: string) {
+    try {
+      return await this.usersRepository.restore(id);
     } catch (error) {
       this.logger.error(error);
       throw error;

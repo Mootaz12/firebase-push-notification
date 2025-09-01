@@ -40,4 +40,14 @@ export class UsersController {
   async deleteUser(@Param('id') id: string) {
     return await this.usersService.deleteUser(id);
   }
+  @HttpCode(HttpStatus.OK)
+  @Get('deleted/soft-deleted')
+  async getSoftDeletedUsers() {
+    return await this.usersService.getSoftDeletedUsers();
+  }
+  @HttpCode(HttpStatus.OK)
+  @Put('deleted/restore/:id')
+  async restoreUser(@Param('id') id: string) {
+    return await this.usersService.restoreUser(id);
+  }
 }
