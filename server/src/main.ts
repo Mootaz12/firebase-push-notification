@@ -6,6 +6,7 @@ import { Logger, ValidationPipe } from '@nestjs/common';
 import { CorsConfigType } from './config/cors.config';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import helmet from 'helmet';
+import { HttpExceptionFilter } from './filters/http-exception.filter';
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
@@ -24,6 +25,7 @@ async function bootstrap() {
       transform: true,
     }),
   );
+  app.useGlobalFilters(new HttpExceptionFilter());
   app.use(
     helmet({
       contentSecurityPolicy:

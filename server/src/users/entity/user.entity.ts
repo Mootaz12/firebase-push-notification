@@ -1,4 +1,4 @@
-import { Column, Entity } from 'typeorm';
+import { Column, DeleteDateColumn, Entity } from 'typeorm';
 import { BaseEntity } from 'src/common/base/base.entity';
 import { UserDto } from '../dto/user.dto';
 import { UseDto } from 'src/common/decorators/use-dto.decorator';
@@ -14,4 +14,6 @@ export class UserEntity extends BaseEntity {
 
   @Column({ type: 'varchar' })
   password: string;
+  @DeleteDateColumn({ type: 'timestamp' })
+  deletedAt: Date;
 }
