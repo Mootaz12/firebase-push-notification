@@ -7,33 +7,60 @@ import { CorsConfigType } from './config/cors.config';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import helmet from 'helmet';
 import { HttpExceptionFilter } from './filters/http-exception.filter';
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
   const configService = app.get(ConfigService);
   const httpConfig = configService.getOrThrow<HttpConfigType>('http');
   const corsConfig = configService.getOrThrow<CorsConfigType>('cors');
+
   app.enableCors({
     origin: corsConfig.origin,
     credentials: corsConfig.credentials,
     methods: corsConfig.methods,
   });
+
   app.setGlobalPrefix('api');
+
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
       transform: true,
     }),
   );
+
   app.useGlobalFilters(new HttpExceptionFilter());
+
   app.use(
     helmet({
       contentSecurityPolicy:
         process.env.NODE_ENV === 'production' ? undefined : false,
     }),
   );
+
+  // Swagger Configuration
+  const config = new DocumentBuilder()
+    .setTitle('Push Notification API')
+    .setDescription('API for managing users and push notifications')
+    .setVersion('1.0')
+    .addTag('users', 'User management endpoints')
+    .addTag('push-notification', 'Push notification endpoints')
+    .build();
+
+  const document = SwaggerModule.createDocument(app, config);
+  SwaggerModule.setup('api/docs', app, document, {
+    swaggerOptions: {
+      persistAuthorization: true,
+    },
+  });
+
   await app.listen(httpConfig.port).then(() => {
     logger.verbose(`Server is running on port: ${httpConfig.port}`);
+    logger.verbose(
+      `Swagger documentation available at: http://localhost:${httpConfig.port}/api/docs`,
+    );
   });
 }
 bootstrap();

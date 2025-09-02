@@ -1,10 +1,7 @@
 import { IsNotEmpty, IsString } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
-import { AbstractDto } from 'src/common/dto/abstract.dto';
-import { BaseEntity } from 'src/common/base/base.entity';
-import { UserEntity } from '../entity/user.entity';
 
-export class UserDto extends AbstractDto {
+export class CreateUserDto {
   @ApiProperty({
     description: 'Full name of the user',
     example: 'John Doe',
@@ -43,14 +40,4 @@ export class UserDto extends AbstractDto {
     message: 'Password is required',
   })
   password: string;
-
-  constructor(entity: BaseEntity<AbstractDto, never>) {
-    super(entity);
-    const user = entity as UserEntity;
-    if (user) {
-      this.name = user.name;
-      this.email = user.email;
-      this.password = user.password;
-    }
-  }
 }
