@@ -1,16 +1,18 @@
-import {
-  BadRequestException,
-  Injectable,
-  Logger,
-  NotFoundException,
-} from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { UserEntity } from './entity/user.entity';
 import { DataSource, IsNull, Not, Repository } from 'typeorm';
 import { UserDto } from './dto/user.dto';
 import { CreateUserDto } from './dto/create-user.dto';
-import * as bcrypt from 'bcrypt';
 import { ProfileEntity } from './entity/profile.entity';
+import { hashPassword } from 'src/utils/helpers';
+import {
+  EmailNotValidException,
+  NameNotValidException,
+  PasswordNotValidException,
+  UserNotFoundException,
+} from 'src/filters/user-exception.filter';
+import { DataNotValidException } from 'src/filters/common-exception.filter';
 
 @Injectable()
 export class UsersService {
@@ -44,7 +46,7 @@ export class UsersService {
         },
       });
       if (!user) {
-        throw new NotFoundException('User not found');
+        throw new UserNotFoundException();
       }
       return user;
     } catch (error) {
@@ -60,12 +62,12 @@ export class UsersService {
           const trimmedEmail = createUserDto.email.trim();
           const trimmedPassword = createUserDto.password.trim();
           if (!trimmedName || !trimmedEmail || !trimmedPassword) {
-            throw new BadRequestException('Invalid user data');
+            throw new DataNotValidException();
           }
           const user = transactionalEntityManager.create(UserEntity, {
             name: trimmedName,
             email: trimmedEmail,
-            password: String(await bcrypt.hash(createUserDto.password, 10)),
+            password: await hashPassword(createUserDto.password),
           });
           const profile = transactionalEntityManager.create(ProfileEntity, {
             bio: `Hello I am ${trimmedName}`,
@@ -89,7 +91,7 @@ export class UsersService {
             where: { id },
           });
           if (!user) {
-            throw new NotFoundException('User not found');
+            throw new UserNotFoundException();
           }
 
           const profile = await transactionalEntityManager.findOne(
@@ -103,7 +105,7 @@ export class UsersService {
           if (userDto.name !== undefined) {
             const trimmedName = userDto.name.trim();
             if (!trimmedName) {
-              throw new BadRequestException('Name cannot be empty');
+              throw new NameNotValidException();
             }
             user.name = trimmedName;
 
@@ -118,7 +120,7 @@ export class UsersService {
           if (userDto.email !== undefined) {
             const trimmedEmail = userDto.email.trim();
             if (!trimmedEmail) {
-              throw new BadRequestException('Email cannot be empty');
+              throw new EmailNotValidException();
             }
             user.email = trimmedEmail;
           }
@@ -127,9 +129,9 @@ export class UsersService {
           if (userDto.password !== undefined) {
             const trimmedPassword = userDto.password.trim();
             if (!trimmedPassword) {
-              throw new BadRequestException('Password cannot be empty');
+              throw new PasswordNotValidException();
             }
-            user.password = String(await bcrypt.hash(userDto.password, 10));
+            user.password = await hashPassword(userDto.password);
           }
 
           return await transactionalEntityManager.save(user);
@@ -144,7 +146,7 @@ export class UsersService {
     try {
       const user = await this.usersRepository.findOneBy({ id });
       if (!user) {
-        throw new NotFoundException('User not found');
+        throw new UserNotFoundException();
       }
       return await this.usersRepository.softRemove({ id });
     } catch (error) {
