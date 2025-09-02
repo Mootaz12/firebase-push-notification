@@ -1,6 +1,6 @@
 import { IsNotEmpty, IsString } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
-import { AbstractDto } from 'src/common/dto/abstract.dto';
+import { AbstractDto } from '../../common/dto/abstract.dto';
 import { BaseEntity } from 'src/common/base/base.entity';
 import { UserEntity } from '../entity/user.entity';
 

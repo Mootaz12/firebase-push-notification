@@ -1,5 +1,5 @@
 import { IsNotEmpty, IsString } from 'class-validator';
-import { AbstractDto } from 'src/common/dto/abstract.dto';
+import { AbstractDto } from '../../common/dto/abstract.dto';
 
 export class ProfileDto extends AbstractDto {
   @IsString({

@@ -1,6 +1,6 @@
 import { Column, Entity, OneToOne } from 'typeorm';
-import { BaseEntity } from 'src/common/base/base.entity';
-import { UseDto } from 'src/common/decorators/use-dto.decorator';
+import { BaseEntity } from '../../common/base/base.entity';
+import { UseDto } from '../../common/decorators/use-dto.decorator';
 import { ProfileDto } from '../dto/profile.dto';
 import { UserEntity } from './user.entity';
 
