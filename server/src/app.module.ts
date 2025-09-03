@@ -7,9 +7,14 @@ import DatabaseConfig, { DatabaseConfigType } from './config/db.config';
 import firebaseConfig from './config/firebase.config';
 import CorsConfig from './config/cors.config';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { CacheInterceptor, CacheModule } from '@nestjs/cache-manager';
+import { APP_INTERCEPTOR } from '@nestjs/core';
 
 @Module({
   imports: [
+    CacheModule.register({
+      isGlobal: true,
+    }),
     ConfigModule.forRoot({
       isGlobal: true,
       load: [HttpConfig, DatabaseConfig, firebaseConfig, CorsConfig],
@@ -32,8 +37,15 @@ import { TypeOrmModule } from '@nestjs/typeorm';
       },
       inject: [ConfigService],
     }),
+
     PushNotificationModule,
     UsersModule,
+  ],
+  providers: [
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: CacheInterceptor,
+    },
   ],
 })
 export class AppModule {}

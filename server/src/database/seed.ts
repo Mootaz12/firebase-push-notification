@@ -34,7 +34,7 @@ async function seed() {
   try {
     return await dataSource.transaction(async (transactionalEntityManager) => {
       let index = 0;
-      while (index < 1000) {
+      while (index < 100000) {
         const password = await hashPassword(`password-${index}`);
         const email = `john.doe${index}@example.com`;
         const name = `John Doe ${index}`;
