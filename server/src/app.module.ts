@@ -9,18 +9,38 @@ import CorsConfig from './config/cors.config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { CacheInterceptor, CacheModule } from '@nestjs/cache-manager';
 import { APP_INTERCEPTOR } from '@nestjs/core';
+import KeyvRedis from '@keyv/redis';
+import redisConfig, { RedisConfigType } from './config/redis.config';
 
 @Module({
   imports: [
-    CacheModule.register({
-      isGlobal: true,
-    }),
     ConfigModule.forRoot({
       isGlobal: true,
-      load: [HttpConfig, DatabaseConfig, firebaseConfig, CorsConfig],
+      load: [
+        HttpConfig,
+        DatabaseConfig,
+        firebaseConfig,
+        CorsConfig,
+        redisConfig,
+      ],
     }),
+    CacheModule.registerAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => {
+        const redisConfig = configService.getOrThrow<RedisConfigType>('redis');
+        return {
+          stores: [
+            new KeyvRedis(`redis://${redisConfig.host}:${redisConfig.port}`),
+          ],
+        };
+      },
+      isGlobal: true,
+    }),
+
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
+      inject: [ConfigService],
       useFactory: (configService: ConfigService) => {
         const dbConfig =
           configService.getOrThrow<DatabaseConfigType>('database');
@@ -35,7 +55,6 @@ import { APP_INTERCEPTOR } from '@nestjs/core';
           autoLoadEntities: true,
         };
       },
-      inject: [ConfigService],
     }),
 
     PushNotificationModule,
